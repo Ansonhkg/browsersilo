@@ -1,0 +1,78 @@
+name: ${BROWSERSILO_COMPOSE_PROJECT:-browsersilo}
+
+services:
+  control-plane:
+    image: browsersilo/control-plane:0.4.0
+    build:
+      context: .
+      dockerfile: container/control-plane.Dockerfile
+    user: "1000:1000"
+    environment:
+      BROWSERSILO_HOST: 0.0.0.0
+      BROWSERSILO_BROWSER_PORT: 4100
+      BROWSERSILO_ADMIN_PORT: 4101
+      BROWSERSILO_WORKER_ADAPTER: docker
+      BROWSERSILO_WORKER_IMAGE: browsersilo/brave-worker:0.4.0
+      BROWSERSILO_WORKER_MANAGER_URL: http://worker-manager:4200
+      BROWSERSILO_WORKER_MANAGER_STDIO_PORT: 4201
+      BROWSERSILO_WORKER_MANAGER_TOKEN: ${BROWSERSILO_WORKER_MANAGER_TOKEN:-local-worker-manager-token-change-me}
+      BROWSERSILO_DATA_DIR: /var/lib/browsersilo
+      BROWSERSILO_DATA_VOLUME: browsersilo-data-${BROWSERSILO_RUN_ID:-local}
+      BROWSERSILO_RUNTIME_SCOPE: ${BROWSERSILO_RUN_ID:-local}
+      BROWSERSILO_PRINCIPALS_JSON: ${BROWSERSILO_PRINCIPALS_JSON:-}
+      BROWSERSILO_AGENT_TOKEN: ${BROWSERSILO_AGENT_TOKEN:-agent-local-development-token}
+      BROWSERSILO_ADMIN_TOKEN: ${BROWSERSILO_ADMIN_TOKEN:-admin-local-development-token}
+      BROWSERSILO_DATA_KEY: ${BROWSERSILO_DATA_KEY:-}
+      BROWSERSILO_MAX_ACTIVE: ${BROWSERSILO_MAX_ACTIVE:-4}
+      BROWSERSILO_MAX_ACTIVE_PER_TENANT: ${BROWSERSILO_MAX_ACTIVE_PER_TENANT:-2}
+      BROWSERSILO_ADMISSION_TIMEOUT_MS: ${BROWSERSILO_ADMISSION_TIMEOUT_MS:-30000}
+      BROWSERSILO_WARM_SHELLS: ${BROWSERSILO_WARM_SHELLS:-2}
+      BROWSERSILO_SECCOMP_PROFILE: /app/container/brave-seccomp.json
+    depends_on:
+      worker-manager:
+        condition: service_healthy
+    ports:
+      - "${BROWSERSILO_BIND_ADDRESS:-127.0.0.1}:${BROWSERSILO_BROWSER_PORT:-4100}:4100"
+      - "${BROWSERSILO_BIND_ADDRESS:-127.0.0.1}:${BROWSERSILO_ADMIN_PORT:-4101}:4101"
+    volumes:
+      - browsersilo-data:/var/lib/browsersilo
+    networks: [default, private]
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=268435456
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+
+  worker-manager:
+    image: browsersilo/control-plane:0.4.0
+    build:
+      context: .
+      dockerfile: container/control-plane.Dockerfile
+    command: ["node", "dist/src/worker-manager/index.js"]
+    environment:
+      BROWSERSILO_WORKER_MANAGER_HOST: 0.0.0.0
+      BROWSERSILO_WORKER_MANAGER_PORT: 4200
+      BROWSERSILO_WORKER_MANAGER_STDIO_PORT: 4201
+      BROWSERSILO_WORKER_MANAGER_TOKEN: ${BROWSERSILO_WORKER_MANAGER_TOKEN:-local-worker-manager-token-change-me}
+      BROWSERSILO_WORKER_IMAGE: browsersilo/brave-worker:0.4.0
+      BROWSERSILO_DATA_VOLUME: browsersilo-data-${BROWSERSILO_RUN_ID:-local}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - browsersilo-data:/var/lib/browsersilo:ro
+    networks: [private]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4200/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+    restart: unless-stopped
+
+networks:
+  default: {}
+  private:
+    internal: true
+
+volumes:
+  browsersilo-data:
+    name: browsersilo-data-${BROWSERSILO_RUN_ID:-local}

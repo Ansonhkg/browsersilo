@@ -1,0 +1,52 @@
+{
+  "name": "@browsesilo/runtime",
+  "version": "0.4.0",
+  "private": true,
+  "type": "module",
+  "description": "Private, durable browser identities for AI agents on disposable workers.",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "build": "npm run build:server && npm run build:ui",
+    "build:server": "tsc -p tsconfig.json",
+    "build:ui": "vite build --config ui/vite.config.ts",
+    "check": "tsc -p tsconfig.json --noEmit && tsc -p ui/tsconfig.json --noEmit",
+    "test": "npm run test:server && npm run test:ui",
+    "test:server": "npm run build:server && node --test dist/test/*.test.js",
+    "test:ui": "vitest run --config ui/vitest.config.ts",
+    "verify": "npm run check && npm test && npm run build",
+    "start": "node dist/src/index.js",
+    "start:mcp": "node dist/src/mcp/index.js",
+    "acceptance:live": "node dist/src/acceptance/live-agent.js"
+  },
+  "devDependencies": {
+    "@heroui/react": "3.2.2",
+    "@heroui/styles": "3.2.2",
+    "@tailwindcss/vite": "4.3.3",
+    "@tanstack/react-query": "5.101.2",
+    "@tanstack/react-router": "1.170.18",
+    "@testing-library/react": "16.3.3",
+    "@testing-library/user-event": "14.6.7",
+    "@types/node": "22.20.1",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "6.0.3",
+    "cmdk": "1.1.1",
+    "effect": "3.22.0",
+    "jsdom": "30.0.1",
+    "lucide-react": "1.25.0",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "tailwindcss": "4.3.3",
+    "typescript": "5.9.3",
+    "vite": "8.1.5",
+    "vitest": "5.0.0"
+  },
+  "dependencies": {
+    "@aws-sdk/client-kms": "3.1090.0",
+    "@modelcontextprotocol/sdk": "1.29.0",
+    "agent-browser": "0.32.2",
+    "zod": "4.4.3"
+  }
+}
